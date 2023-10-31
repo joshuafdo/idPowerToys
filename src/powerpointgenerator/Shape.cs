@@ -88,6 +88,7 @@ public enum Shape
     StateDisabled,
     StateEnabled,
     StateReportOnly,
+    ShapeToc,
     TenantId,
     TenantName,
     UserWorkload,

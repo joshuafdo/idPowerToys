@@ -9,6 +9,11 @@ namespace IdPowerToys.PowerPointGenerator;
 public class DocumentGenerator
 {
     private GraphData _graphData = new(new ConfigOptions());
+    private const int SlideTitle = 0;
+    private const int SlideToc = 1;
+    private const int SlideTemplate = 2;
+
+    private List<SlideInfo> SlideList = new List<SlideInfo>();
 
     #region GeneratePowerPoint overloads
     public void GeneratePowerPoint(GraphData graphData, Stream outputStream, ConfigOptions configOptions)
@@ -62,8 +67,8 @@ public class DocumentGenerator
         _graphData = graphData;
         var policies = _graphData.Policies;
 
-        SetTitleSlideInfo(pptxDoc.Slides[0]);
-        var templateSlide = pptxDoc.Slides[1];
+        SetTitleSlideInfo(pptxDoc.Slides[SlideTitle]);
+        var templateSlide = pptxDoc.Slides[SlideTemplate];
         if (policies != null)
         {
             if (configOptions.GroupSlidesByState == true)
@@ -78,6 +83,19 @@ public class DocumentGenerator
             }
         }
         pptxDoc.Slides.Remove(templateSlide);
+        SetTableOfContent(pptxDoc, SlideList);
+    }
+
+    private void SetTableOfContent(IPresentation pptxDoc, List<SlideInfo> slideList)
+    {
+        var tocSlide = pptxDoc.Slides[SlideToc];
+        var namesList = "";
+        foreach (var slideInfo in slideList)
+        {
+            namesList = namesList + slideInfo.PolicyName + Environment.NewLine;
+        }
+        var ppt = new PowerPointHelper(tocSlide);
+        ppt.SetText(Shape.ShapeToc, namesList);
     }
 
     private void AddSlides(IPresentation pptxDoc, ICollection<ConditionalAccessPolicy> policies, string? sectionTitle, ConditionalAccessPolicyState? policyState)
@@ -87,7 +105,7 @@ public class DocumentGenerator
             ? from p in policies orderby p.DisplayName select p
             : from p in policies where p.State == policyState orderby p.DisplayName select p;
 
-        var templateSlide = pptxDoc.Slides[1];
+        var templateSlide = pptxDoc.Slides[SlideTemplate];
 
         if (filteredPolicies.Count() > 0)
         {
@@ -103,6 +121,8 @@ public class DocumentGenerator
                 SetPolicySlideInfo(slide, policy, index++);
 
                 section.Slides.Add(slide);
+
+                SlideList.Add(new SlideInfo() { PolicyName = policy.DisplayName, Slide = slide });
             }
         }
     }
