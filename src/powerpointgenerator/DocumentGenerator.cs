@@ -88,14 +88,33 @@ public class DocumentGenerator
 
     private void SetTableOfContent(IPresentation pptxDoc, List<SlideInfo> slideList)
     {
+        var maxItemCount = 8;
+        var maxPolicyLength = 30;
+        int counter = 0;
         var tocSlide = pptxDoc.Slides[SlideToc];
         var namesList = "";
+        var section = pptxDoc.Sections[0];
         foreach (var slideInfo in slideList)
         {
-            namesList = namesList + slideInfo.PolicyName + Environment.NewLine;
+            if (namesList != "")
+            {
+                namesList = namesList + Environment.NewLine;
+            }
+            string str = slideInfo.PolicyName;
+            string first30Chars = str.Length > maxPolicyLength ? str.Substring(0, maxPolicyLength) + "...": str;
+            namesList = namesList + first30Chars;
+            counter++;
+            if(counter > maxItemCount)
+            {
+                var tocPage = tocSlide.Clone();
+                var ppt = new PowerPointHelper(tocPage);
+                ppt.SetText(Shape.ShapeToc, namesList);
+                counter = 0;
+                section.Slides.Add(tocPage);
+                namesList = "";
+            }
         }
-        var ppt = new PowerPointHelper(tocSlide);
-        ppt.SetText(Shape.ShapeToc, namesList);
+        pptxDoc.Slides.Remove(tocSlide);
     }
 
     private void AddSlides(IPresentation pptxDoc, ICollection<ConditionalAccessPolicy> policies, string? sectionTitle, ConditionalAccessPolicyState? policyState)
