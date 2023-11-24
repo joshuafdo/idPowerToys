@@ -89,28 +89,61 @@ public class DocumentGenerator
     private void SetTableOfContent(IPresentation pptxDoc, List<SlideInfo> slideList)
     {
         var maxItemCount = 8;
-        var maxPolicyLength = 30;
+        var maxPolicyLength = 60;
         int counter = 0;
         var tocSlide = pptxDoc.Slides[SlideToc];
+        
         var namesList = "";
         var section = pptxDoc.Sections[0];
-        foreach (var slideInfo in slideList)
+        var tocPage = tocSlide.Clone();
+        var ppt = new PowerPointHelper(tocPage);
+        var table = tocPage.Shapes[1] as ITable;
+
+        var result = decimal.Divide(slideList.Count, maxItemCount);
+        int slideNumber =(int)Math.Ceiling(result) + 1;
+        for (int index =0; index < slideList.Count; index++)
         {
-            if (namesList != "")
+            var slideInfo = slideList[index];
+         
+            var rowNumber = table.Rows.Add(table.Rows[1].Clone());
+            slideNumber++;
+
+            string shortPolicyName = "";
+            if (slideInfo.PolicyName.Length > maxPolicyLength)
             {
-                namesList = namesList + Environment.NewLine;
+                shortPolicyName = slideInfo.PolicyName.Substring(0, maxPolicyLength) + "...";
             }
-            string str = slideInfo.PolicyName;
-            string first30Chars = str.Length > maxPolicyLength ? str.Substring(0, maxPolicyLength) + "...": str;
-            namesList = namesList + first30Chars;
-            counter++;
-            if(counter > maxItemCount)
+            else
             {
-                var tocPage = tocSlide.Clone();
-                var ppt = new PowerPointHelper(tocPage);
-                ppt.SetText(Shape.ShapeToc, namesList);
-                counter = 0;
+                shortPolicyName = slideInfo.PolicyName;
+            }
+
+            table.Rows[rowNumber].Cells[0].TextBody.Text = slideNumber.ToString();
+            table.Rows[rowNumber].Cells[1].TextBody.Text = shortPolicyName;
+
+            var status = "Enabled";
+            if (slideInfo.Policy.State == ConditionalAccessPolicyState.EnabledForReportingButNotEnforced)
+            {
+                status = "Report only";
+            }
+            else if (slideInfo.Policy.State == ConditionalAccessPolicyState.Disabled)
+            {
+                status = "Disabled";
+            }
+            table.Rows[rowNumber].Cells[2].TextBody.Text = status;
+            
+            counter++;
+            if(counter > maxItemCount || index == slideList.Count - 1)
+            {
+                table.Rows.RemoveAt(1);
                 section.Slides.Add(tocPage);
+                tocPage = tocSlide.Clone();
+                ppt = new PowerPointHelper(tocPage);
+                table = tocPage.Shapes[1] as ITable;
+                table.Rows[0].Cells[0].TextBody.Text = "#";
+      
+                //ppt.SetText(Shape.ShapeToc, namesList);
+                counter = 0;
                 namesList = "";
             }
         }
@@ -141,7 +174,7 @@ public class DocumentGenerator
 
                 section.Slides.Add(slide);
 
-                SlideList.Add(new SlideInfo() { PolicyName = policy.DisplayName, Slide = slide });
+                SlideList.Add(new SlideInfo() { PolicyName = policy.DisplayName, Policy = policy, Slide = slide });
             }
         }
     }
